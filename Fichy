@@ -1,0 +1,149 @@
+-- Use Orion UI Library instead (more reliable)
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+
+-- Create Window
+local Window = OrionLib:MakeWindow({
+    Name = "Fishing Helper", 
+    HidePremium = true,
+    SaveConfig = false, 
+    IntroEnabled = false
+})
+
+-- Create Tabs
+local AutoTab = Window:MakeTab({
+    Name = "Auto Features",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+local TeleportTab = Window:MakeTab({
+    Name = "Teleports",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+-- Auto Cast/Reel Toggle
+AutoTab:AddToggle({
+    Name = "Auto Cast",
+    Default = false,
+    Callback = function(Value)
+        _G.AutoCast = Value
+        
+        -- Use task.spawn to prevent UI from freezing
+        if _G.AutoCast then
+            _G.AutoCastLoop = task.spawn(function()
+                while _G.AutoCast do
+                    local character = game:GetService("Players").LocalPlayer.Character
+                    if character and character:FindFirstChild("Training Rod") then
+                        character:FindFirstChild("Training Rod").events.cast:FireServer()
+                        task.wait(2) -- Adjust the wait time as needed
+                        game:GetService("ReplicatedStorage"):WaitForChild("events"):WaitForChild("reelfinished"):FireServer()
+                        task.wait(2) -- Adjust the wait time as needed
+                    else
+                        task.wait(0.5)
+                    end
+                end
+            end)
+        else
+            if _G.AutoCastLoop then
+                task.cancel(_G.AutoCastLoop)
+            end
+        end
+    end
+})
+
+-- Teleport Buttons
+local TeleportButtons = {
+   {Name = "Moosewood Village", Position = workspace.zones.player["MoosewoodVillage"].Position},
+   {Name = "Roslit", Position = workspace.world.spawns.TpSpots.roslit.Position},
+   {Name = "Enchant Altar", Position = workspace.world.spawns.TpSpots.enchantaltar.Position},
+   {Name = "Altar", Position = workspace.world.altar.Position},
+   {Name = "Mushgrove", Position = workspace.world.spawns.TpSpots.mushgrove.Position},
+   {Name = "Sunstone", Position = workspace.world.spawns.TpSpots.sunstone.Position},
+   {Name = "Terrapin", Position = workspace.world.spawns.TpSpots.terrapin.Position},
+   {Name = "Northern", Position = workspace.world.spawns.TpSpots.northern.Position},
+   {Name = "Ancient Isle", Position = workspace.world.map["Ancient Isle"].Greenery.Grass:GetChildren()[13].Position},
+   {Name = "Snowcap Island", Position = workspace.world.spawns["Snowcap Island"]:GetChildren()[541].Position},
+   {Name = "Forsaken Shores", Position = workspace.world.map["Forsaken Shores"]:GetChildren()[165].Position},
+   {Name = "Atlantis", Position = workspace.world.spawns.TpSpots.atlantis.Position},
+}
+
+for _, button in ipairs(TeleportButtons) do
+    TeleportTab:AddButton({
+        Name = button.Name,
+        Callback = function()
+            pcall(function()
+                game.Players.LocalPlayer.Character:MoveTo(button.Position)
+            end)
+        end
+    })
+end
+
+-- Walk on Water Toggle
+AutoTab:AddToggle({
+    Name = "Walk on Water",
+    Default = false,
+    Callback = function(Value)
+        _G.WalkOnWater = Value
+        
+        if _G.WalkOnWater then
+            _G.WalkOnWaterLoop = task.spawn(function()
+                while _G.WalkOnWater do
+                    local character = game.Players.LocalPlayer.Character
+                    if character and character:FindFirstChild("HumanoidRootPart") then
+                        -- Try to find water near the character
+                        for _, part in pairs(workspace:GetPartBoundsInRadius(character.HumanoidRootPart.Position, 10)) do
+                            if part.Name == "Water" then
+                                part.CanCollide = true
+                            end
+                        end
+                    end
+                    task.wait(0.1)
+                end
+            end)
+        else
+            if _G.WalkOnWaterLoop then
+                task.cancel(_G.WalkOnWaterLoop)
+            end
+        end
+    end
+})
+
+-- Anti-AFK Toggle
+AutoTab:AddToggle({
+    Name = "Anti-AFK",
+    Default = false,
+    Callback = function(Value)
+        _G.AntiAFK = Value
+        
+        if _G.AntiAFK then
+            _G.AntiAFKLoop = task.spawn(function()
+                local VirtualUser = game:GetService("VirtualUser")
+                while _G.AntiAFK do
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton2(Vector2.new())
+                    task.wait(30)
+                end
+            end)
+        else
+            if _G.AntiAFKLoop then
+                task.cancel(_G.AntiAFKLoop)
+            end
+        end
+    end
+})
+
+-- Extra safety: Clean up toggles when script stops
+game.Players.LocalPlayer.CharacterRemoving:Connect(function()
+    _G.AutoCast = false
+    _G.WalkOnWater = false
+    _G.AntiAFK = false
+end)
+
+-- Notify that script loaded successfully
+OrionLib:MakeNotification({
+    Name = "Fishing Helper",
+    Content = "Script loaded successfully!",
+    Image = "rbxassetid://4483345998",
+    Time = 5
+})
